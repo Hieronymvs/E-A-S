@@ -1,6 +1,7 @@
 # E|A|S
 /* 
 //for further inquiries contact me: jeroen@seads.network
+
 Loads source (file, data sheet etc) and read iterations. Each iteration contains the type of modules required.
 Comparison of what is needed vs what exists in the current build.
 The rule sequence (probably) depends on the module type needed as they may rely on each other. But all rule sequences probably start with the geometry rule.
