@@ -28,11 +28,19 @@ Stochasticity can be applied during two moments in cycle:
 
 ! each rule must check if location is already in buildlist so the sequence does not go through entire rule list unnecessarily (if .. contains)
 
+
+BuildList data : List<Vector3,Vector3>\
+<Location,( step,mod type ,--  )>
+step= 'step' from data
+type= 'mod type' of module, found in enum modType
+
 IMPORTANT: 
 derive maximum amount of locations from 'Mod Radius'= asteroid radius. asteroid size function to be added
 Issue: Unity adding decimals in object locations vs vector3 integer locations in lists. May be solved by using normalized locations.
 
 !!! TO DO: verification
+
+!! COMPARE RELAY LISTS, not other
 
 */
 
@@ -40,6 +48,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+//using moduleClass;
 
 public class mods : MonoBehaviour
 {
@@ -59,9 +68,16 @@ public class mods : MonoBehaviour
     public List<GameObject> modObjects = new List<GameObject>();// needed for object reference (destroy)
     public List<Vector3> asteroidVolume = new List<Vector3>();// all locations within asteroid geometry only
     public List<Vector3> asteroidSurface = new List<Vector3>();// locations on surface of asteroid only
-    public List<Vector3> buildList = new List<Vector3>();// contains adresses/locations of actual mods, read/write
+    public List<Vector3> buildList = new List<Vector3>();// contains adresses/locations of actual mods, read/write. to be replaced by moduleclass
+    public List<moduleClass> built = new List<moduleClass>();
+
+
+    //var buildList = new List<moduleClass>();// to replace buildlist
+
+
     List<Vector3> relayList = new List<Vector3>();// Pass on available locations between rules, while going through sequence of rules. Cleared and repopulated inside single rule application, passing info to next rule.
     List<Vector3> tempList = new List<Vector3>();//  Short-lived list used within single rule. Copy locations from rule after AND-AND operation, paste in relayList.Cleared between rules, so does not pass info to next rule.
+    //List<GameObject> tempObj = new List<GameObject>();//
 
     List<int> tempData = new List<int>();// contains one row of data from source. Mockdata or actual data.
 
@@ -73,6 +89,8 @@ public class mods : MonoBehaviour
     // objects
     Vector3 origin = new Vector3(0, 0, 0);// serves as a reference. Might be removed later.
     private GameObject[] delObj;// enables as a reference needed to destroy objects
+
+    int step = 10;
     int counter = 0;//
     int selection;// used to select index from list
     string type;// used to pass module type name to build list.
@@ -91,13 +109,14 @@ public class mods : MonoBehaviour
     void Start()
     {
 
+
         // get variables from 'locations' script
         locations getVariable = GetComponent<locations>();
         // unitSize = getVariable.unitSize;// get unitSize from 'locations' script
 
         modRadius = getVariable.modRadius;// get modRadius from 'locations' script
 
-
+        var buildList = new List<moduleClass>();// to replace buildlist
 
         // get location geometry from 'locations' script
         locationList = new List<Vector3>(GetComponent<locations>().modGeometry);
@@ -121,13 +140,12 @@ public class mods : MonoBehaviour
         Debug.Log("  START: tempData.Count:" + tempData.Count);
         Debug.Log("  START: unitSize:" + unitSize);
 
-
-
         tempList.Clear();
         //load 
         processing();
-
         instantiateBuildlist();
+
+
 
     }
 
@@ -136,6 +154,8 @@ public class mods : MonoBehaviour
     {
         getKey();
     }
+
+
 
     void processing()
     {
@@ -146,6 +166,7 @@ public class mods : MonoBehaviour
         // tempData = temporary datalist
         //{ generic, mining, oreStorage, processing, refinedStorage, printingBot, manufacturing, equipStorage, assemblyBot, habitat, lifeSupport };
 
+        step = 10;// only fixed value for using one row of mockdata
         int maxValue = tempData.Max();
         //Debug.Log("maxValue : " + maxValue);
         int dataCount = tempData.Count;
@@ -200,30 +221,51 @@ public class mods : MonoBehaviour
                 */
 
             case 1:
-                // mining rule sequence
+                type = "m.mining";
 
                 ruleGeometry();
                 ruleAsteroidsurface();
-                addtoBuildlist();
-
-                type = "m.mining";
+                addtoBuilt(step, type);
                 instantiateBuildlist();
-                
+
                 Debug.Log("modType.mining");
                 break;
 
             case 2:
+                type = "m.oreStorage";
 
-                // ruleGeometry();
-                // ruleAsteroidsurface();
-                //  ruleGeometry();
+                // Ore Storage (x5)
+                ruleGeometry();
 
-                //  instantiateOnemod();
-                // not further than 10 modules away from a MiningModule
-                // find objects with tag mining
-                // must be atttached to something     'OR' operation
-                // rule 'attached to':
-                // variable 'attachedTo= ....
+                // rule <10 mods away of mining must be atttached to something     'OR' operation
+                // add all locations withing 10 mod radius 
+
+
+                // foreach (GameObject tempObj in GameObject.FindGameObjectsWithTag("m.mining")) <== change to new class
+                // {
+                //     Vector3 tempv3 = tempObj.transform.position;// !ABSOLUTE VALUES!
+
+                //     //float distance = Vector3.Distance(tempObj.transform.position, transform.position);
+
+                //     foreach (Vector3 tempv3a in relayList) // !NORMALIZD VALUES!
+                //     {
+                //         //float distance = Vector3.Distance(tempObj.transform.position, transform.position);
+                //         float distance = Vector3.Distance(tempv3, tempv3a);
+
+                //         // distance must be in units, from list, not absolute positions
+
+                //         if (distance < 3 * unitSize)
+                //         {
+                //             tempList.Add(tempv3a);//
+                //             Debug.Log("_______________________distance" + distance);
+                //         }
+                //     }
+                // }
+
+                //purgeandReload();
+                //instantiateRelaylist();//for testing
+
+                Debug.Log("******************** m.oreStorage");
 
 
                 Debug.Log("modType.oreStorage");
@@ -430,28 +472,63 @@ public class mods : MonoBehaviour
 
     // OTHER METHODS #############################################################################################################################################
 
+    void purgeandReload()
+    {
+        relayList.Clear();// clears (removes invalid locations) and repopulates with new locations
 
+        foreach (Vector3 tempv3 in tempList)
+        {
+            relayList.Add(tempv3);
+
+        }
+
+        tempList.Clear();
+    }
+
+
+    // [Serializable]
+
+    // class built to store in list
+    public class moduleClass
+    {
+        public int step { get; set; }
+        public string modType { get; set; }
+        public Vector3 posv3 { get; set; }
+
+    }
 
     // adds one random module from relaylist to the Build List
-    void addtoBuildlist()
+    // void addtoBuildlist(int tStep, string tType)
+    void addtoBuilt(int stepp, string ttype)
     {
-
-        Debug.Log("=========addtoBuildlist()=========== ");
-        Debug.Log("relayList.Count: " + relayList.Count);
-        Debug.Log("buildList.Count: " + buildList.Count);
-
+        
+        stepp = step;
+        ttype = type;
+        
         Vector3 randomV3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location
 
-        buildList.Add(randomV3);// 
-        Debug.Log("###############################buildList.Count: " + buildList.Count);
-        // relayList.Clear();
+        built.Add(new moduleClass
+        {
+            step = 10,
+            modType = "test",
+            posv3 = randomV3,
+        });
+
+        //Debug.Log("buildList.Count: " + buildList.Count);
+        relayList.Clear();
+
     }
 
     // instantiates entire build list. Only to be used at the end of processing all modules
+
     void instantiateBuildlist()
     {
-        foreach (Vector3 tempv3 in buildList)
+
+       // tempData vector3 = typeof (Vector3).built;
+        foreach (moduleClass tempvar in built)
         {
+          Vector3 tempv3 = tempvar.posv3;
+
             instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
             instantiatedMod1.tag = type;// type string = name of module type
 
@@ -478,7 +555,7 @@ public class mods : MonoBehaviour
             Vector3 seedVector = new Vector3(0, 0, 1.0f * i);
 
             instantiatedMod1 = Instantiate(mod1, seedVector, Quaternion.identity);
-            buildList.Add(seedVector);//
+            //buildList.Add(seedVector);//
             relayList.Add(seedVector);//
         }
         Debug.Log("buildList.Count: " + buildList.Count);
@@ -538,12 +615,12 @@ public class mods : MonoBehaviour
 
     // Methods below are for testing purposes only.########################################################################################################
 
-    void instantiateallMods()
+    void instantiateRelaylist()
     {
         foreach (Vector3 tempv3 in relayList)
         {
             instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
-            instantiatedMod1.tag = "m.generic";
+            //instantiatedMod1.tag = "m.generic";
             modObjects.Add(instantiatedMod1);// adding to module object reference list
         }
     }
