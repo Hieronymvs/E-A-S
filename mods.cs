@@ -7,18 +7,20 @@ The rule sequence (probably) depends on the module type needed. But all rule seq
 Each individual rule adds or removes modules from a temporary list. This list is continously compared to the buildList.
 tempList may be removed later in development so that the buildList will be used to compare.
 
+note: Vector3 is a Unity type holding values for (X,Y,Z)
 
 List overview:
 
-* templist = available spaces, reduced subsequently (never increases)
-* locationlist = available geometry spaces
-* buildlist = actual list of used vector 3 locations. Location entered after passing last rule script.
+* locationlist = A permanent list of available location within geometry space. Loaded from 'Locations' script during Start.
+* templist = A short-lived memorization of available spaces used to pass information to a relaylist and purged immediately after.
+* relayList = Passing eligible locations from one rule to the other. Within a rule method, it is generally flushed and repopulation by the templist.
+* buildlist = actual list of used vector 3 locations +  meta descriptions (step, module type). The buildList is using a custom datatype {(x,y,z),step,modType} called 'moduleClass'.
 
 Rule overview:
 
-ruleGeometry: first rule since its least restrictive. ALL locations always adhere to this rule.
+ruleGeometry: first rule since its least restrictive and enables first population of the relayList. ALL locations always adhere to this constraint.
 ruleSpace: checks if the 'physical' location for a new module is available.
-ruleAsteroidvolume: Holds values for a spherical asteroid.
+ruleAsteroidvolume: Holds location values (vector3) within a spherical asteroid form.
 ruleAsteroidsurface: Holds values for the asteroid surface but only within the scope of accesible location
 ruleConesurface: Holds values for the modules on outer surface of cone. Used for shielding.
 
@@ -68,8 +70,8 @@ public class mods : MonoBehaviour
     public List<GameObject> modObjects = new List<GameObject>();// needed for object reference (destroy)
     public List<Vector3> asteroidVolume = new List<Vector3>();// all locations within asteroid geometry only
     public List<Vector3> asteroidSurface = new List<Vector3>();// locations on surface of asteroid only
-    public List<Vector3> buildList = new List<Vector3>();// contains adresses/locations of actual mods, read/write. to be replaced by moduleclass
-    public List<moduleClass> built = new List<moduleClass>();
+    public List<Vector3> buildList = new List<Vector3>();// OBSOLETE: to removed
+    public List<moduleClass> BuildList = new List<moduleClass>();// contains adresses/locations of actual mods, read/write. to be replaced by moduleclass
 
 
     //var buildList = new List<moduleClass>();// to replace buildlist
@@ -143,9 +145,8 @@ public class mods : MonoBehaviour
         tempList.Clear();
         //load 
         processing();
-        instantiateBuildlist();
-
-
+        instantiateBuildlist();// all (BuildList) mods instantiation. Must be called at the end of processing only ! (will instantiate if placed cases)
+        // another way of single mod instantiation
 
     }
 
@@ -177,17 +178,15 @@ public class mods : MonoBehaviour
         //Loop entire tempData list (maxValue) times so that each element can be reduced to 0. 
         for (int l = 0; l < (maxValue); l++)
         {
-
             for (int caseLoop = 0; caseLoop < dataCount; caseLoop++)//loop through tempData (11 elements in Mockdata)
             {
                 int element = tempData[caseLoop];
 
                 if (element > 0)// value not further reduced below 0
                 {
-
                     modSelection = caseLoop;
                     cases();
-                    relayList.Clear();
+                    // relayList.Clear();
                     tempData[caseLoop] = tempData[caseLoop] - 1;// reduce each element in list to 0
                 }
                 // first check if already in buildList!
@@ -199,10 +198,6 @@ public class mods : MonoBehaviour
             //     Debug.Log("tempData[check] : " + tempData[check]);
             // }
         }
-
-        // tempData.Clear();
-        // relayList.Clear();
-        // tempList.Clear();
 
     }
 
@@ -222,53 +217,39 @@ public class mods : MonoBehaviour
 
             case 1:
                 type = "m.mining";
-
+                Debug.Log(type);
                 ruleGeometry();
                 ruleAsteroidsurface();
+                //  instantiateOnemod();
                 addtoBuilt(step, type);
-                instantiateBuildlist();
-
-                Debug.Log("modType.mining");
                 break;
 
             case 2:
                 type = "m.oreStorage";
+                Debug.Log(type);
 
-                // Ore Storage (x5)
                 ruleGeometry();
 
-                // rule <10 mods away of mining must be atttached to something     'OR' operation
-                // add all locations withing 10 mod radius 
+                // compare distance between location of miningmod in buildlist and locations in relaylist
+                // foreach vector3 in relaylist < 10 mods away from mining mods
 
+                foreach (moduleClass tempvar in BuildList) if (tempvar.modType == "m.mining")
+                    {
+                        //         add all locations <10 mods away in relaylist
+                        //       
+                        //         string tempStr = tempvar.modType;
+                        //          Vector3 tempv3a = tempvar.posv3;
+                        //         
+                        //         float distance = Vector3.Distance(tempv3a, ... );
+                        //             
+                        //           tempList.Add(...);
+                        //           purgeandReload();
+                  
 
-                // foreach (GameObject tempObj in GameObject.FindGameObjectsWithTag("m.mining")) <== change to new class
-                // {
-                //     Vector3 tempv3 = tempObj.transform.position;// !ABSOLUTE VALUES!
+                    }
 
-                //     //float distance = Vector3.Distance(tempObj.transform.position, transform.position);
+                addtoBuilt(step, type);
 
-                //     foreach (Vector3 tempv3a in relayList) // !NORMALIZD VALUES!
-                //     {
-                //         //float distance = Vector3.Distance(tempObj.transform.position, transform.position);
-                //         float distance = Vector3.Distance(tempv3, tempv3a);
-
-                //         // distance must be in units, from list, not absolute positions
-
-                //         if (distance < 3 * unitSize)
-                //         {
-                //             tempList.Add(tempv3a);//
-                //             Debug.Log("_______________________distance" + distance);
-                //         }
-                //     }
-                // }
-
-                //purgeandReload();
-                //instantiateRelaylist();//for testing
-
-                Debug.Log("******************** m.oreStorage");
-
-
-                Debug.Log("modType.oreStorage");
                 break;
 
             case 3:
@@ -362,7 +343,7 @@ public class mods : MonoBehaviour
 
         foreach (Vector3 tempv3 in locationList)
         {
-            relayList.Add(tempv3);//    ITS EMPTY
+            relayList.Add(tempv3);//    
         }
 
     }
@@ -389,21 +370,7 @@ public class mods : MonoBehaviour
             }
         }
 
-        // Debug.Log("tempList.Count:" + tempList.Count);
-        // Debug.Log("relayList.Count:" + relayList.Count);
-
-        relayList.Clear();// clears (removes invalid locations) and repopulates with new locations
-
-        foreach (Vector3 tempv3 in tempList)
-        {
-            relayList.Add(tempv3);
-
-        }
-
-        tempList.Clear();
-
-        // Debug.Log("tempList.Count:" + tempList.Count);
-        // Debug.Log("relayList.Count:" + relayList.Count);
+        purgeandReload();
     }
 
     void ruleSpace()// If 0, must return. Combine with random assignment. Rule to check if found locations are already occupied or not, checked with -or between- every rule
@@ -472,6 +439,7 @@ public class mods : MonoBehaviour
 
     // OTHER METHODS #############################################################################################################################################
 
+    // clears relayList values and populates with new tempList values. Then purges tempList. Used between rules.
     void purgeandReload()
     {
         relayList.Clear();// clears (removes invalid locations) and repopulates with new locations
@@ -499,23 +467,23 @@ public class mods : MonoBehaviour
 
     // adds one random module from relaylist to the Build List
     // void addtoBuildlist(int tStep, string tType)
-    void addtoBuilt(int stepp, string ttype)
+    void addtoBuilt(int tStep, string tType)
     {
-        
-        stepp = step;
-        ttype = type;
-        
+        //Debug.Log("_______________________________addtoBuilt ");
+        tStep = step;
+        tType = type;
+
         Vector3 randomV3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location
 
-        built.Add(new moduleClass
+        BuildList.Add(new moduleClass
         {
             step = 10,
-            modType = "test",
+            modType = tType,
             posv3 = randomV3,
         });
 
         //Debug.Log("buildList.Count: " + buildList.Count);
-        relayList.Clear();
+        purgeandReload();
 
     }
 
@@ -523,11 +491,11 @@ public class mods : MonoBehaviour
 
     void instantiateBuildlist()
     {
-
-       // tempData vector3 = typeof (Vector3).built;
-        foreach (moduleClass tempvar in built)
+        Debug.Log("___________________________________________buildList.Count: " + BuildList.Count);
+        // tempData vector3 = typeof (Vector3).built;
+        foreach (moduleClass tempvar in BuildList)
         {
-          Vector3 tempv3 = tempvar.posv3;
+            Vector3 tempv3 = tempvar.posv3;
 
             instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
             instantiatedMod1.tag = type;// type string = name of module type
@@ -536,16 +504,8 @@ public class mods : MonoBehaviour
         }
     }
 
-    // //instantiate the build list. 
-    // void instantiateOnemod() //  
-    // {
 
-    //     Vector3 tempv3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location 
-    //     // TO DO: verification
-    //     instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
-    //     //instantiatedMod1.tag = "m.generic";
-    //     modObjects.Add(instantiatedMod1);// adding to module object reference list
-    // }
+
 
     // generates list of seed mods or islands of seedmods
     void seedMods()
@@ -623,6 +583,17 @@ public class mods : MonoBehaviour
             //instantiatedMod1.tag = "m.generic";
             modObjects.Add(instantiatedMod1);// adding to module object reference list
         }
+    }
+
+    void instantiateOnemod() //  
+    {
+
+        Vector3 tempv3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location 
+        // TO DO: verification
+        instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
+        //instantiatedMod1.tag = "m.generic";
+        modObjects.Add(instantiatedMod1);// adding to module object reference list
+        Debug.Log("_________________instantiateOnemod(): ");
     }
 
     // Visualize global geometric volume constraints:
