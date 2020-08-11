@@ -60,7 +60,7 @@ public class mods : MonoBehaviour
     public Vector3 checkValue;
 
     public GameObject instantiatedMod1;// 'EVEN' layer
-    public GameObject mod1;// more variations to add later
+    public GameObject mod0;// more variations to add later
     public GameObject mod2;// etc.
 
 
@@ -70,7 +70,7 @@ public class mods : MonoBehaviour
     public List<GameObject> modObjects = new List<GameObject>();// needed for object reference (destroy)
     public List<Vector3> asteroidVolume = new List<Vector3>();// all locations within asteroid geometry only
     public List<Vector3> asteroidSurface = new List<Vector3>();// locations on surface of asteroid only
-    public List<Vector3> buildList = new List<Vector3>();// OBSOLETE: to removed
+    //public List<Vector3> buildList = new List<Vector3>();// OBSOLETE: to removed
     public List<moduleClass> BuildList = new List<moduleClass>();// contains adresses/locations of actual mods, read/write. to be replaced by moduleclass
 
 
@@ -230,23 +230,29 @@ public class mods : MonoBehaviour
 
                 ruleGeometry();
 
-                // compare distance between location of miningmod in buildlist and locations in relaylist
-                // foreach vector3 in relaylist < 10 mods away from mining mods
-
                 foreach (moduleClass tempvar in BuildList) if (tempvar.modType == "m.mining")
                     {
-                        //         add all locations <10 mods away in relaylist
-                        //       
-                        //         string tempStr = tempvar.modType;
-                        //          Vector3 tempv3a = tempvar.posv3;
-                        //         
-                        //         float distance = Vector3.Distance(tempv3a, ... );
-                        //             
-                        //           tempList.Add(...);
-                        //           purgeandReload();
-                  
 
+                        foreach (Vector3 tempv3 in relayList)
+                        {
+                            float distance = (Vector3.Distance(tempv3, tempvar.posv3));
+
+
+                            //  if (tempList.Contains(tempvar.posv3)  == false)
+                            //   {
+                            if ((distance > 0 && distance <= 1))
+                            {
+                                Debug.Log("===================>" + distance);
+
+                                tempList.Add(tempv3);
+
+                                // instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
+
+                            }
+                            //   }
+                        }
                     }
+                purgeandReload();
 
                 addtoBuilt(step, type);
 
@@ -312,29 +318,29 @@ public class mods : MonoBehaviour
     void randomSelection()
     {
 
-        //repeat count in relaylist
-        int relayCount = relayList.Count;
+        // //repeat count in relaylist
+        // int relayCount = relayList.Count;
 
-        for (int i = 0; i < relayCount; i++)
-        {
-            Vector3 randomLocation = relayList[Random.Range(0, relayList.Count)];
+        // for (int i = 0; i < relayCount; i++)
+        // {
+        //     Vector3 randomLocation = relayList[Random.Range(0, relayList.Count)];
 
-            // check if in buildlist
-            foreach (Vector3 tempv3 in buildList)
-            {
-                if (tempv3 == randomLocation)//
-                {
-                    relayList.Remove(tempv3);// and find another available location, shrinks relay list
-                }
-                else
-                {
-                    buildList.Add(tempv3);
-                    relayList.Clear();
-                    break;// return
-                }
-            }
-        }
-        Debug.Log("No module location was available");
+        //     // check if in buildlist
+        //     foreach (Vector3 tempv3 in buildList)
+        //     {
+        //         if (tempv3 == randomLocation)//
+        //         {
+        //             relayList.Remove(tempv3);// and find another available location, shrinks relay list
+        //         }
+        //         else
+        //         {
+        //             buildList.Add(tempv3);
+        //             relayList.Clear();
+        //             break;// return
+        //         }
+        //     }
+        // }
+        // Debug.Log("No module location was available");
 
     }
 
@@ -373,20 +379,20 @@ public class mods : MonoBehaviour
         purgeandReload();
     }
 
-    void ruleSpace()// If 0, must return. Combine with random assignment. Rule to check if found locations are already occupied or not, checked with -or between- every rule
-    {
-        foreach (Vector3 tempv3 in buildList)
-        {
-            if (relayList.Contains(tempv3))//buildlist and relay are mutualy exclusive. No vector3 can exist in both
-            {
-                relayList.Remove(tempv3);
-                // and find another available location
+    // void ruleSpace()// If 0, must return. Combine with random assignment. Rule to check if found locations are already occupied or not, checked with -or between- every rule
+    // {
+    //     foreach (Vector3 tempv3 in buildList)
+    //     {
+    //         if (relayList.Contains(tempv3))//buildlist and relay are mutualy exclusive. No vector3 can exist in both
+    //         {
+    //             relayList.Remove(tempv3);
+    //             // and find another available location
 
-            }// also check if no space available restart or end
+    //         }// also check if no space available restart or end
 
-        }
-        tempList.Clear();
-    }
+    //     }
+    //     tempList.Clear();
+    // }
 
 
     // MODELLING METHODS: cone geometry, asteroid volume, asteroid surface, ########################################################################################
@@ -474,6 +480,8 @@ public class mods : MonoBehaviour
         tType = type;
 
         Vector3 randomV3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location
+                                                                       // repeat (relaylist count) times, if location already exists
+
 
         BuildList.Add(new moduleClass
         {
@@ -481,6 +489,7 @@ public class mods : MonoBehaviour
             modType = tType,
             posv3 = randomV3,
         });
+
 
         //Debug.Log("buildList.Count: " + buildList.Count);
         purgeandReload();
@@ -497,8 +506,8 @@ public class mods : MonoBehaviour
         {
             Vector3 tempv3 = tempvar.posv3;
 
-            instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
-            instantiatedMod1.tag = type;// type string = name of module type
+            instantiatedMod1 = Instantiate(mod0, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
+            instantiatedMod1.tag = tempvar.modType;// type string = name of module type
 
             modObjects.Add(instantiatedMod1);// adding to module object reference list
         }
@@ -514,11 +523,11 @@ public class mods : MonoBehaviour
         {
             Vector3 seedVector = new Vector3(0, 0, 1.0f * i);
 
-            instantiatedMod1 = Instantiate(mod1, seedVector, Quaternion.identity);
+            instantiatedMod1 = Instantiate(mod0, seedVector, Quaternion.identity);
             //buildList.Add(seedVector);//
             relayList.Add(seedVector);//
         }
-        Debug.Log("buildList.Count: " + buildList.Count);
+        Debug.Log("NuildList.Count: " + BuildList.Count);
     }
 
     void clearMods()
@@ -529,7 +538,7 @@ public class mods : MonoBehaviour
         {
             Destroy(delObj[i]);// old notation
         }
-        buildList.Clear();
+        BuildList.Clear();
     }
 
 
@@ -550,7 +559,7 @@ public class mods : MonoBehaviour
         data_Habitat = 1;
         data_LifeSupport = 1;
 
-        int[] mockdata = { 0, 5, 5, 1, 7, 1, 1, 1, 11, 1, 1 };// 
+        int[] mockdata = { 0, 5, 8, 1, 7, 1, 1, 1, 11, 1, 1 };// 
 
         // add mockdata to tempData list
         for (int l = 0; l < mockdata.Length; l++)
@@ -579,7 +588,7 @@ public class mods : MonoBehaviour
     {
         foreach (Vector3 tempv3 in relayList)
         {
-            instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
+            instantiatedMod1 = Instantiate(mod0, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
             //instantiatedMod1.tag = "m.generic";
             modObjects.Add(instantiatedMod1);// adding to module object reference list
         }
@@ -590,7 +599,7 @@ public class mods : MonoBehaviour
 
         Vector3 tempv3 = relayList[Random.Range(0, relayList.Count)];//selecting a random location 
         // TO DO: verification
-        instantiatedMod1 = Instantiate(mod1, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
+        instantiatedMod1 = Instantiate(mod0, new Vector3(tempv3.x * unitSize, tempv3.y * unitSize, tempv3.z * unitSize), Quaternion.identity);
         //instantiatedMod1.tag = "m.generic";
         modObjects.Add(instantiatedMod1);// adding to module object reference list
         Debug.Log("_________________instantiateOnemod(): ");
@@ -603,7 +612,7 @@ public class mods : MonoBehaviour
         for (int i = 0; i < locationList.Count; i++)
         {
             Vector3 tempv3 = (locationList[i]);
-            instantiatedMod1 = Instantiate(mod1, new Vector3(locationList[i].x * unitSize, locationList[i].y * unitSize, locationList[i].z * unitSize), Quaternion.identity);
+            instantiatedMod1 = Instantiate(mod0, new Vector3(locationList[i].x * unitSize, locationList[i].y * unitSize, locationList[i].z * unitSize), Quaternion.identity);
             //Debug.Log("test:" + i + modList[i].x + modList[i].y + modList[i].z);
         }
     }
